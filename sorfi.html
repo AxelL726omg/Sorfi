@@ -1,9 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat con Sorfi 💬</title>
+<style>
+    body {
+        font-family: "Segoe UI", sans-serif;
+        background-color: #f2f1f7;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+    }
+    #chat-container {
+        width: 400px;
+        height: 500px;
+        background: #fff;
+        border-radius: 10px;
+        padding: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        display: flex;
+        flex-direction: column;
+    }
+    #chat-box {
+        flex: 1;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    #input-msg {
+        padding: 10px;
+        flex: 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        width: calc(100% - 70px);
+    }
+    #send-btn {
+        padding: 10px;
+        margin-left: 5px;
+        background-color: #D63384;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .user-msg { color: #0078D7; font-weight: bold; margin-bottom: 5px; }
+    .sorfi-msg { color: #D63384; margin-bottom: 5px; }
+    .preview-msg { color: gray; font-style: italic; margin-bottom: 5px; }
+</style>
+</head>
+<body>
+
+<div id="chat-container">
+    <div id="chat-box"></div>
+    <div style="display: flex;">
+        <input type="text" id="input-msg" placeholder="Escribí tu mensaje..." autocomplete="off"/>
+        <button id="send-btn">Enviar</button>
+    </div>
+</div>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script>
 let nombreUsuario = "";
 
 const chatBox = document.getElementById("chat-box");
 const input = document.getElementById("input-msg");
 const sendBtn = document.getElementById("send-btn");
+let previewDiv = null;
 
 function pedirNombre() {
     nombreUsuario = prompt("¿Cuál es tu nombre?");
@@ -44,13 +113,11 @@ client.on("message", (topic, message) => {
     chatBox.scrollTop = chatBox.scrollHeight;
 });
 
-// Para mostrar previsualización mientras escribís
-let previewDiv = null;
-
+// Mostrar previsualización mientras se escribe
 input.addEventListener("input", () => {
     if(!previewDiv) {
         previewDiv = document.createElement("div");
-        previewDiv.className = "user-msg";
+        previewDiv.className = "preview-msg";
         chatBox.appendChild(previewDiv);
     }
     previewDiv.textContent = `[${nombreUsuario}]: ${input.value}`;
@@ -58,7 +125,7 @@ input.addEventListener("input", () => {
 });
 
 input.addEventListener("blur", () => {
-    // cuando dejas de escribir, se queda el mensaje final y limpia la previewDiv
+    // cuando dejas de escribir, se queda el mensaje final y limpia previewDiv
     previewDiv = null;
 });
 
@@ -66,10 +133,13 @@ function enviarMensaje() {
     const text = input.value.trim();
     if(!text) return;
 
-    // El mensaje ya estaba en preview, solo aseguramos que se quede bien
+    // El mensaje ya estaba en preview
     if(previewDiv) {
         previewDiv.textContent = `[${nombreUsuario}]: ${text}`;
+        previewDiv.className = "user-msg";
         previewDiv = null;
+    } else {
+        chatBox.innerHTML += `<div class="user-msg">[${nombreUsuario}]: ${text}</div>`;
     }
 
     // Publicar mensaje al broker
@@ -84,6 +154,7 @@ function enviarMensaje() {
     }
 
     input.value = "";
+    chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 // Eventos
@@ -93,3 +164,5 @@ input.addEventListener("keypress", e => { if(e.key === "Enter") enviarMensaje();
 // Pedir nombre al iniciar
 pedirNombre();
 </script>
+</body>
+</html>
