@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat con Sorfi 💬</title>
+    <style>
+        body {
+            font-family: "Segoe UI", sans-serif;
+            background-color: #f2f1f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #chat-container {
+            width: 400px;
+            height: 500px;
+            background: #fff;
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chat-box {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+
+        #input-msg {
+            padding: 10px;
+            flex: 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: calc(100% - 70px);
+        }
+
+        #send-btn {
+            padding: 10px;
+            margin-left: 5px;
+            background-color: #D63384;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .user-msg {
+            color: #0078D7;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .sorfi-msg {
+            color: #D63384;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <div id="chat-box"></div>
+        <div style="display: flex;">
+            <input type="text" id="input-msg" placeholder="Escribí tu mensaje..." />
+            <button id="send-btn">Enviar</button>
+        </div>
+    </div>
+
+    <!-- Paho MQTT JS -->
+    <script src="https://unpkg.com/paho-mqtt/mqttws31.min.js"></script>
+    <script>
+        // Configuración MQTT
+        const broker = "mqtt.flespi.io";
+        const port = 80; // WebSocket
+        const token = "WE5ug92S0I6wxZXBrSgVn4zaYkcv0nEgnvTTBird4ATm5djaxGN90dt1XFpWogtx";
+
+        const topicIn = "chat/mensaje";      // Mensajes que envía el usuario
+        const topicOut = "chat/respuesta";   // Mensajes que envía Sorfi
+
+        // Crear cliente MQTT
+        const clientID = "webchat_" + Math.floor(Math.random() * 1000);
+        const client = new Paho.MQTT.Client(broker, port, clientID);
+
+        client.onConnectionLost = function(responseObject) {
+            console.log("Conexión perdida:", responseObject.errorMessage);
+        };
+
+        client.onMessageArrived = function(message) {
+            const chatBox = document.getElementById("chat-box");
+            chatBox.innerHTML += `<div class="sorfi-msg">${message.payloadString}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        };
+
+        // Conectar al broker
+        client.connect({
+            useSSL: false,
+            userName: token,
+            password: "",
+            onSuccess: function() {
+                console.log("Conectado al broker MQTT");
+                client.subscribe(topicOut);
+                // Mensaje inicial de presencia
+                const mensaje = new Paho.MQTT.Message("Sorfi está conectada y lista para chatear 💬");
+                mensaje.destinationName = topicIn;
+                client.send(mensaje);
+            }
+        });
+
+        // Enviar mensaje desde el input
+        const sendBtn = document.getElementById("send-btn");
+        const input = document.getElementById("input-msg");
+        const chatBox = document.getElementById("chat-box");
+
+        function enviarMensaje() {
+            if(input.value.trim() === "") return;
+
+            // Mostrar mensaje del usuario
+            chatBox.innerHTML += `<div class="user-msg">${input.value}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // Enviar mensaje al broker
+            const message = new Paho.MQTT.Message(input.value);
+            message.destinationName = topicIn;
+            client.send(message);
+
+            input.value = "";
+        }
+
+        sendBtn.addEventListener("click", enviarMensaje);
+        input.addEventListener("keypress", function(e) {
+            if(e.key === "Enter") enviarMensaje();
+        });
+    </script>
+</body>
+</html>
