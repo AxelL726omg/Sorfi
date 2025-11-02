@@ -119,17 +119,18 @@ function enviarMensaje() {
     chatBox.innerHTML += `<div class="user-msg">[${nombreUsuario}]: ${text}</div>`;
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    // Comando especial /finalizar
+    // Publicar mensaje al broker en el formato [nombre]:mensaje
     if(text === "/finalizar") {
+        // Publicar /finalizar para que Sorfi reciba el comando
+        client.publish(topicIn, "/finalizar");
         chatBox.innerHTML += `<div class="sorfi-msg">Conexión cerrada. Hasta luego 😢</div>`;
         client.end(true);
         input.disabled = true;
         sendBtn.disabled = true;
-        return;
+    } else {
+        client.publish(topicIn, `[${nombreUsuario}]:${text}`);
     }
 
-    // Publicar mensaje al broker en el formato [nombre]:mensaje
-    client.publish(topicIn, `[${nombreUsuario}]:${text}`);
     input.value = "";
 }
 
@@ -141,4 +142,5 @@ input.addEventListener("keypress", e => { if(e.key === "Enter") enviarMensaje();
 pedirNombre();
 </script>
 </body>
+</html>
 </html>
