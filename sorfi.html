@@ -31,6 +31,8 @@
         padding: 10px;
         margin-bottom: 10px;
         border-radius: 5px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
     }
     #input-msg {
         padding: 10px;
@@ -53,27 +55,38 @@
 </style>
 </head>
 <body>
+
 <div id="chat-container">
     <div id="chat-box"></div>
     <div style="display: flex;">
-        <input type="text" id="input-msg" placeholder="Escribí tu mensaje..." />
+        <input type="text" id="input-msg" placeholder="Escribí tu mensaje..." autocomplete="off"/>
         <button id="send-btn">Enviar</button>
     </div>
 </div>
 
-<!-- mqtt.js -->
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script>
-const broker = "wss://mqtt.flespi.io:443";
-const token = "WE5ug92S0I6wxZXBrSgVn4zaYkcv0nEgnvTTBird4ATm5djaxGN90dt1XFpWogtx";
-const topicIn = "chat/mensaje";
-const topicOut = "chat/respuesta";
+let nombreUsuario = "";
 
 const chatBox = document.getElementById("chat-box");
 const input = document.getElementById("input-msg");
 const sendBtn = document.getElementById("send-btn");
 
-// Crear cliente MQTT
+function pedirNombre() {
+    nombreUsuario = prompt("¿Cuál es tu nombre?");
+    if(!nombreUsuario || nombreUsuario.trim() === "") {
+        nombreUsuario = "Usuario";
+    }
+    chatBox.innerHTML += `<div class="sorfi-msg">¡Hola ${nombreUsuario}! Soy Sorfi 💬</div>`;
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// === MQTT ===
+const broker = "wss://mqtt.flespi.io:443";
+const token = "WE5ug92S0I6wxZXBrSgVn4zaYkcv0nEgnvTTBird4ATm5djaxGN90dt1XFpWogtx";
+const topicIn = "chat/mensaje";
+const topicOut = "chat/respuesta";
+
 const client = mqtt.connect(broker, {
     username: token,
     password: "",
@@ -81,7 +94,6 @@ const client = mqtt.connect(broker, {
     clientId: "webchat_" + Math.floor(Math.random() * 1000)
 });
 
-// Cuando se conecta
 client.on("connect", () => {
     console.log("✅ Conectado al broker MQTT");
     chatBox.innerHTML += `<div class="sorfi-msg">Sorfi está conectada y lista para chatear 💬</div>`;
@@ -89,25 +101,22 @@ client.on("connect", () => {
     client.subscribe(topicOut);
 });
 
-// Manejo de errores
 client.on("error", err => {
     console.error("❌ Error MQTT:", err);
 });
 
-// Recibir mensajes de Sorfi
 client.on("message", (topic, message) => {
     const msg = message.toString();
     chatBox.innerHTML += `<div class="sorfi-msg">${msg}</div>`;
     chatBox.scrollTop = chatBox.scrollHeight;
 });
 
-// Enviar mensaje
 function enviarMensaje() {
     const text = input.value.trim();
     if(!text) return;
 
     // Mostrar mensaje del usuario
-    chatBox.innerHTML += `<div class="user-msg">${text}</div>`;
+    chatBox.innerHTML += `<div class="user-msg">[${nombreUsuario}]: ${text}</div>`;
     chatBox.scrollTop = chatBox.scrollHeight;
 
     // Comando especial /finalizar
@@ -119,14 +128,17 @@ function enviarMensaje() {
         return;
     }
 
-    // Publicar mensaje al broker
-    client.publish(topicIn, text);
+    // Publicar mensaje al broker en el formato [nombre]:mensaje
+    client.publish(topicIn, `[${nombreUsuario}]:${text}`);
     input.value = "";
 }
 
-// Eventos de botón y Enter
+// Eventos
 sendBtn.addEventListener("click", enviarMensaje);
 input.addEventListener("keypress", e => { if(e.key === "Enter") enviarMensaje(); });
+
+// Pedir nombre al iniciar
+pedirNombre();
 </script>
 </body>
 </html>
